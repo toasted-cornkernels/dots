@@ -1,6 +1,6 @@
 fullscreen = true
 
-theme = "Harper"
+background = black
 
 font-size = 20
 font-family = D2Coding ligature
