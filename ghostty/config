@@ -1,6 +1,7 @@
 fullscreen = true
 
-background = black
+#background = black
+theme=light:"Builtin Tango Light",dark:"Builtin Tango Dark"
 
 font-size = 20
 font-family = D2Coding ligature
@@ -14,8 +15,10 @@ mouse-hide-while-typing = true
 shell-integration-features = no-cursor
 
 cursor-style = block
-cursor-style-blink = false
 cursor-invert-fg-bg = true
+cursor-style-blink = false
+
+minimum-contrast = 1.05
 
 keybind=cmd+t=new_tab
 
