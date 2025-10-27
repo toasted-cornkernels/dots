@@ -21,3 +21,5 @@ minimum-contrast = 1.05
 keybind=cmd+t=new_tab
 
 confirm-close-surface = false
+
+title = ""
