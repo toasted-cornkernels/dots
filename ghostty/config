@@ -1,6 +1,5 @@
 fullscreen = true
 
-#background = black
 theme=light:"Builtin Tango Light",dark:"Builtin Tango Dark"
 
 font-size = 20
