@@ -56,7 +56,7 @@ set encoding=utf-8
 set fileencoding=utf-8
 set nocompatible
 set hidden
-set clipboard^=unnamedplus
+set clipboard=unnamedplus
 set mouse=a
 
 " Visuals
