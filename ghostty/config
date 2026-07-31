@@ -1,6 +1,6 @@
 fullscreen = true
 
-theme=light:"Builtin Tango Light",dark:"Builtin Tango Dark"
+theme=light:"Catppuccin Latte",dark:"Catppuccin Mocha"
 
 font-size = 20
 font-family = D2Coding ligature
@@ -17,8 +17,16 @@ cursor-style-blink = false
 
 minimum-contrast = 1.05
 
-keybind=cmd+t=new_tab
+keybind = cmd+t=new_tab
+keybind = cmd+;=new_split:right
+keybind = cmd+'=new_split:down
+keybind = cmd+h=goto_split:left
+keybind = cmd+l=goto_split:right
+keybind = cmd+j=goto_split:bottom
+keybind = cmd+k=goto_split:top
 
 confirm-close-surface = false
 
 title = ""
+
+unfocused-split-opacity = 1

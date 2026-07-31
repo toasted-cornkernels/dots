@@ -15,9 +15,9 @@ Plug 'junegunn/fzf.vim'
 
 Plug 'junegunn/vim-slash'
 
-Plug 'jpalardy/vim-slime'
+Plug 'junegunn/rainbow_parentheses.vim'
 
-" Plug 'junegunn/seoul256.vim'
+Plug 'jpalardy/vim-slime'
 
 Plug 'catppuccin/vim', { 'as': 'catppuccin', 'branch': 'main' }
 
@@ -32,8 +32,6 @@ Plug 'tpope/vim-sexp-mappings-for-regular-people'
 Plug 'tpope/vim-repeat'
 
 Plug 'tpope/vim-surround'
-
-Plug 'christoomey/vim-tmux-navigator'
 
 Plug 'yangmillstheory/vim-snipe'
 
@@ -50,6 +48,8 @@ Plug 'farmergreg/vim-lastplace'
 Plug 'vimpostor/vim-lumen'
 
 Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKey!']  }
+
+Plug 'haya14busa/vim-keeppad'
 
 Plug 'vimwiki/vimwiki'
 call plug#end()
@@ -264,9 +264,6 @@ inoremap <C-U> <C-G>u<C-U>
 " Visuals ==========================================
 " ==================================================
 
-" let g:seoul256_light_background = 256
-" let g:seoul256_background = 233
-
 function SetLightMode()
   colorscheme catppuccin_latte
   hi Normal ctermbg=NONE
@@ -288,3 +285,5 @@ highlight SignColumn guibg=NONE
 let &t_SI = "\e[6 q"
 let &t_EI = "\e[2 q"
 
+let g:rainbow#pairs = [['(', ')'], ['[', ']'], ['{', '}']]
+autocmd VimEnter * RainbowParentheses
