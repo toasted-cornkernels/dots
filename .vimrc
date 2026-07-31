@@ -1,3 +1,6 @@
+" Plugins ==========================================
+" ==================================================
+
 let data_dir = '~/.vim'
 if empty(glob(data_dir . '/autoload/plug.vim'))
   silent execute '!curl -fLo '.data_dir.'/autoload/plug.vim --create-dirs  https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim'
@@ -10,11 +13,15 @@ Plug 'junegunn/fzf', { 'do': { -> fzf#install()  }  }
 
 Plug 'junegunn/fzf.vim'
 
-Plug 'vim-airline/vim-airline'
-
-Plug 'vim-airline/vim-airline-themes'
+Plug 'junegunn/vim-slash'
 
 Plug 'jpalardy/vim-slime'
+
+" Plug 'junegunn/seoul256.vim'
+
+Plug 'catppuccin/vim', { 'as': 'catppuccin', 'branch': 'main' }
+
+Plug 'guns/vim-sexp'
 
 Plug 'tpope/vim-commentary'
 
@@ -22,15 +29,11 @@ Plug 'tpope/vim-fugitive'
 
 Plug 'tpope/vim-sexp-mappings-for-regular-people'
 
-Plug 'guns/vim-sexp'
-
 Plug 'tpope/vim-repeat'
 
 Plug 'tpope/vim-surround'
 
 Plug 'christoomey/vim-tmux-navigator'
-
-Plug 'ryanoasis/vim-devicons'
 
 Plug 'yangmillstheory/vim-snipe'
 
@@ -44,40 +47,92 @@ Plug 'sbdchd/neoformat'
 
 Plug 'farmergreg/vim-lastplace'
 
-Plug 'vimpostor/vim-prism'
+Plug 'vimpostor/vim-lumen'
 
 Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKey!']  }
 
+Plug 'vimwiki/vimwiki'
 call plug#end()
 
-" Force encoding to UTF-8.
-scriptencoding utf-8
+scriptencoding utf-8 " Force encoding to UTF-8
+syntax on
+
+" Basic Settings ===================================
+" ==================================================
+
 set encoding=utf-8
 set fileencoding=utf-8
 set nocompatible
 set hidden
-set clipboard=unnamedplus
 set mouse=a
-
-" Visuals
-syntax on
-let g:airline_theme='jellybeans'
-let g:airline_left_sep = ''
-let g:airline_right_sep = ''
-colorscheme prism
 set fillchars=eob:\ ,vert:\│
 set shortmess+=I
+set autoindent
+set copyindent
+set backspace=indent,eol,start
+set complete-=i
+set smarttab
+set noimd
+set nospell
+set ttimeout
+set ttimeoutlen=100
+set nu
+set incsearch
+set nonumber
+set nrformats-=octal
+set guioptions=
+set splitright
+set splitbelow
+set noswapfile
+set nobackup
+set nowritebackup
+set noundofile
+set novisualbell
+set t_vb=
+set tm=500
+set belloff=all
+set incsearch
+set hlsearch
+set laststatus=2
+set ruler
+set wildmenu
+set cindent
+set ignorecase
+set smartcase
+set smartindent " <tab> inserts four <space>s
+set tabstop=2
+set expandtab
+set shiftwidth=2
+set noshowmode
+set scrolloff=1
+set sidescrolloff=5
+set display+=lastline
+set fileformats+=mac
+set autoread
+set sessionoptions-=options
+set viewoptions-=options
+set viminfo^=!
+set nolangremap
+set ballooneval
+set showmatch
+set shiftround
+set undolevels=1000
+set history=1000
+set tabpagemax=50
+set termguicolors
 
-hi Normal guibg=NONE ctermbg=NONE
-hi NonText ctermbg=none
-highlight SignColumn guibg=NONE
+if has('mac')
+  set clipboard=unnamed
+else
+  set clipboard=unnamedplus
+endif
 
-" Different cursor shapes in Insert mode and Normal mode.
-let &t_SI = "\e[6 q"
-let &t_EI = "\e[2 q"
+" Keymaps ==========================================
+" ==================================================
 
 let mapleader = "\<Space>"
 let maplocalleader = ","
+
 map <leader>[ :tabprev<cr>
 map <leader>] :tabnext<cr>
 map <leader>nt :tabnew<Space>
@@ -144,43 +199,15 @@ while i <= 9
 endwhile
 
 " vim-sexp config
-" let g:sexp_filetypes = "clojure,scheme,lisp,timl,hy,fennel"
-" map <leader>kw <Plug>(sexp_round_tail_wrap_element)
-" map <leader>kW <Plug>(sexp_round_tail_wrap_list)
-" map <leader>ks <Plug>(sexp_capture_next_element)
-" map <leader>kS <Plug>(sexp_capture_prev_element)
-" map <leader>kb <Plug>(sexp_capture_tail_element)
-" map <leader>kB <Plug>(sexp_capture_head_element)
-" map <leader>k[ <Plug>(sexp_square_tail_wrap_list)
-" map <leader>k{ <Plug>(sexp_curly_tail_wrap_list)
-
-set autoindent
-set backspace=indent,eol,start
-set complete-=i
-set smarttab
-set noimd
-set nospell
-set ttimeout
-set ttimeoutlen=100
-set nu
-set incsearch
-set nonumber
-set nrformats-=octal
-set guioptions=
-set splitright
-set splitbelow
-
-set noswapfile
-set nobackup
-set nowritebackup
-set noundofile
-
-" No annoying sound on errors
-set novisualbell
-set t_vb=
-set tm=500
-set belloff=all
-
+let g:sexp_filetypes = "clojure,scheme,lisp,timl,hy,fennel"
+map <leader>kw <Plug>(sexp_round_tail_wrap_element)
+map <leader>kW <Plug>(sexp_round_tail_wrap_list)
+map <leader>ks <Plug>(sexp_capture_next_element)
+map <leader>kS <Plug>(sexp_capture_prev_element)
+map <leader>kb <Plug>(sexp_capture_tail_element)
+map <leader>kB <Plug>(sexp_capture_head_element)
+map <leader>k[ <Plug>(sexp_square_tail_wrap_list)
+map <leader>k{ <Plug>(sexp_curly_tail_wrap_list)
 " vim-slime config
 let g:slime_python_ipython = 1
 if has("gui_running")
@@ -195,21 +222,6 @@ if !has('nvim') && &ttimeoutlen == -1
     set ttimeout
     set ttimeoutlen=100
 endif
-
-set incsearch
-set hlsearch
-set laststatus=2
-set ruler
-set wildmenu
-set cindent
-set ignorecase
-set smartcase
-
-" <tab> inserts four <space>s
-set smartindent
-set tabstop=2
-set expandtab
-set shiftwidth=2
 
 " Aliases for commonly used commands+lazy shift finger:
 command! -bar -nargs=* -complete=file -range=% -bang W         <line1>,<line2>write<bang> <args>
@@ -235,10 +247,6 @@ command! -bar -nargs=* -complete=dir           -bang Cd        cd<bang> <args>
 command! -bar                                        Messages  messages
 command! -bar -nargs=+ -complete=file          -bang Source    source<bang> <args>
 
-set scrolloff=1
-set sidescrolloff=5
-set display+=lastline
-
 if &listchars ==# 'eol:$'
     set listchars=tab:>\ ,trail:-,extends:>,precedes:<,nbsp:+
 endif
@@ -251,17 +259,32 @@ if has('path_extra')
     setglobal tags-=./tags tags-=./tags; tags^=./tags;
 endif
 
-set fileformats+=mac
-
-set autoread
-
-if &history < 1000
-    set history=1000
-endif
-if &tabpagemax < 50
-    set tabpagemax=50
-endif
-
-set sessionoptions-=options
-
 inoremap <C-U> <C-G>u<C-U>
+
+" Visuals ==========================================
+" ==================================================
+
+" let g:seoul256_light_background = 256
+" let g:seoul256_background = 233
+
+function SetLightMode()
+  colorscheme catppuccin_latte
+  hi Normal ctermbg=NONE
+  hi NonText ctermbg=NONE
+endfunction
+
+function SetDarkMode()
+  colorscheme catppuccin_mocha
+  hi Normal ctermbg=NONE
+  hi NonText ctermbg=NONE
+endfunction
+
+au User LumenLight call SetLightMode()
+au User LumenDark call SetDarkMode()
+
+highlight SignColumn guibg=NONE
+
+" Different cursor shapes in Insert mode and Normal mode.
+let &t_SI = "\e[6 q"
+let &t_EI = "\e[2 q"
+
