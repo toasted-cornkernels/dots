@@ -20,6 +20,9 @@ if !filereadable(s:plug_vim) && executable('curl')
   endif
 endif
 
+" Lisp filetypes for vim-sexp; global because Plug evaluates its options.
+let g:sexp_filetypes = 'clojure,scheme,lisp,timl,hy,fennel,racket'
+
 if filereadable(s:plug_vim)
   call plug#begin(s:data_dir . '/plugged')
   " git: magit, git-link
@@ -43,8 +46,8 @@ if filereadable(s:plug_vim)
   " vundo
   Plug 'mbbill/undotree', { 'on': 'UndotreeToggle' }
   " evil-lisp-state
-  Plug 'guns/vim-sexp'
-  Plug 'tpope/vim-sexp-mappings-for-regular-people'
+  Plug 'guns/vim-sexp', { 'for': split(g:sexp_filetypes, ',') }
+  Plug 'tpope/vim-sexp-mappings-for-regular-people', { 'for': split(g:sexp_filetypes, ',') }
   " smartparens
   Plug 'cohama/lexima.vim'
   " rainbow-delimiters
@@ -67,16 +70,25 @@ function! s:Has(plugin) abort
         \ && isdirectory(g:plugs[a:plugin].dir)
 endfunction
 
-" Built-in packages ($VIMRUNTIME/pack/dist/opt)
-silent! packadd! matchit
-silent! packadd! comment     " gc operator (evil-commentary)
-silent! packadd! nohlsearch  " clear search highlight on idle/insert
-silent! packadd! cfilter     " :Cfilter / :Lfilter
-silent! packadd! hlyank      " pulse the yanked region
-" editorconfig: sleuth also reads indent keys from .editorconfig; this adds
-" the rest (trim_trailing_whitespace, charset, ...).
+" Built-in packages ($VIMRUNTIME/pack/dist/opt): matchit, comment (gc
+" operator, evil-commentary), nohlsearch (clear search highlight on
+" idle/insert), cfilter (:Cfilter / :Lfilter), hlyank (pulse the yanked
+" region), editorconfig (sleuth reads the indent keys from .editorconfig;
+" this adds the rest: trim_trailing_whitespace, charset, ...).
+" Same effect as `packadd!` (inserted after $VIMRUNTIME, none has an after/),
+" but ~0.7 ms cheaper each; packages missing from older Vims are skipped.
 let g:EditorConfig_exclude_patterns = ['fugitive://.*', 'scp://.*']
-silent! packadd! editorconfig
+let s:rtp = split(&runtimepath, '\\\@<!,')
+let s:at = index(s:rtp, $VIMRUNTIME) + 1
+for s:pkg in ['matchit', 'comment', 'nohlsearch', 'cfilter', 'hlyank', 'editorconfig']
+  let s:dir = $VIMRUNTIME . '/pack/dist/opt/' . s:pkg
+  if isdirectory(s:dir)
+    call insert(s:rtp, escape(s:dir, '\,'), s:at > 0 ? s:at : len(s:rtp))
+    let s:at += s:at > 0
+  endif
+endfor
+let &runtimepath = join(s:rtp, ',')
+unlet s:rtp s:at s:pkg s:dir
 
 " OSC 52 clipboard over SSH (clipetty); local sessions keep the native clipboard.
 if has('clipboard_provider') && !has('gui_running')
@@ -735,8 +747,8 @@ command! -bar -nargs=+ -complete=file          -bang Source    source<bang> <arg
 " Plugin configs ===================================
 " ==================================================
 
-" vim-sexp
-let g:sexp_filetypes = 'clojure,scheme,lisp,timl,hy,fennel,racket'
+" vim-sexp: lazy-loaded on the first Lisp buffer (see g:sexp_filetypes above);
+" its own FileType autocmds still run for that buffer.
 
 " lexima (smartparens): plain pairs only, no <Esc> remap, no endwise/newline rules.
 let g:lexima_map_escape = ''
