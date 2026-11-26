@@ -1325,6 +1325,16 @@
         {
             "keys": [
                 "j",
+                "t"
+            ],
+            "name": "Jump to node",
+            "type": "command",
+            "command": "vscode-neovim.send",
+            "args": "<Plug>(jump-node)"
+        },
+        {
+            "keys": [
+                "j",
                 "u"
             ],
             "name": "Previous change",
