@@ -134,6 +134,9 @@ set nomodeline                     " enable-local-variables :safe; untrusted fil
 set synmaxcol=300                  " so-long: don't highlight minified lines
 set foldmethod=indent
 set foldlevelstart=99              " open files unfolded; za/zM/zR to fold
+if exists('+signcolumn')
+  set signcolumn=yes               " spacious-padding: blank left margin
+endif
 set history=1000
 set tabpagemax=50
 set novisualbell
@@ -593,6 +596,7 @@ nnoremap <leader>Tl :setlocal number!<CR>
 nnoremap <leader>TL :set number!<CR>
 nnoremap <leader>Tt :colorscheme <C-z>
 nnoremap <leader>Tm :let &laststatus = (&laststatus ? 0 : 2)<CR>
+nnoremap <leader>Tp :let &l:signcolumn = (&l:signcolumn ==# 'yes' ? 'no' : 'yes')<CR>
 if exists('+fullscreen')
   nnoremap <leader>Tf :set invfullscreen<CR>
 endif
@@ -767,7 +771,7 @@ let g:which_key_map.t = {
 let g:which_key_map.T = {
       \ 'name': '+toggle',
       \ 'l': 'line-numbers', 'L': 'global-line-numbers', 't': 'theme',
-      \ 'm': 'mode-line', 'f': 'fullscreen',
+      \ 'm': 'mode-line', 'f': 'fullscreen', 'p': 'padding',
       \ }
 let g:which_key_map.x = {
       \ 'name': '+text', 'u': 'undo-list', 'c': 'count-words',
