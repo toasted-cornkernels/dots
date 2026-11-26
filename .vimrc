@@ -47,7 +47,8 @@ if filereadable(s:plug_vim)
   Plug 'hylang/vim-hy'
   " theme + auto-dark
   Plug 'catppuccin/vim', { 'as': 'catppuccin', 'branch': 'main' }
-  Plug 'vimpostor/vim-lumen'
+  " MacVim's GUI tracks the OS appearance natively; see .gvimrc
+  Plug 'vimpostor/vim-lumen', has('gui_macvim') && has('gui_running') ? { 'on': [] } : {}
   " which-key
   Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKeyVisual'] }
   call plug#end()
@@ -845,7 +846,7 @@ autocmd vimrc ColorScheme *
       \ | highlight NonText ctermbg=NONE
       \ | highlight SignColumn guibg=NONE
 
-" auto-dark: vim-lumen follows the OS appearance.
+" auto-dark: vim-lumen follows the OS appearance (MacVim GUI: .gvimrc).
 let g:lumen_light_colorscheme = 'catppuccin_latte'
 let g:lumen_dark_colorscheme = 'catppuccin_mocha'
 if !exists('g:colors_name')
