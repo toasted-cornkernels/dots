@@ -1,7 +1,3 @@
-" Failsafe Vim config, mirroring ~/.emacs.d/init.el (SPC leader, , local leader).
-" Principles: prefer built-in Vim over plugins; degrade gracefully when plugins,
-" network, or newer Vim features are unavailable; no LSP.
-
 set nocompatible
 set encoding=utf-8
 scriptencoding utf-8
@@ -921,8 +917,36 @@ autocmd vimrc ColorScheme *
       \ | highlight SignColumn guibg=NONE
 
 " auto-dark without a watcher process: Vim asks the terminal for its background
-" color (t_RB) and sets 'background', which reloads catppuccin as latte/mocha.
+" color (t_RB), but the reply lands after the first redraw. Start from the last
+" detected value so catppuccin doesn't flash latte -> mocha, then follow the
+" reply ourselves (Vim ignores it once 'background' has been set).
 " Live switching is MacVim-only (.gvimrc).
+if !has('gui_running') && exists('##TermResponseAll')
+  let s:bg_file = s:data_dir . '/background'
+  let s:bg_last = get(filereadable(s:bg_file) ? readfile(s:bg_file, '', 1) : [], 0, '')
+  if s:bg_last =~# '^\%(dark\|light\)$'
+    let &background = s:bg_last
+  endif
+
+  function! s:FollowTermBackground() abort
+    let l:rgb = matchlist(v:termrbgresp, 'rgb:\(\x\x\)\x*/\(\x\x\)\x*/\(\x\x\)\x*')
+    if empty(l:rgb)
+      return
+    endif
+    let l:bg = eval(join(map(l:rgb[1:3], 'str2nr(v:val, 16)'), '+')) < 3 * 128
+          \ ? 'dark' : 'light'
+    if l:bg !=# &background
+      let &background = l:bg
+      redraw!
+    endif
+    if l:bg !=# s:bg_last
+      let s:bg_last = l:bg
+      silent! call writefile([l:bg], s:bg_file)
+    endif
+  endfunction
+  autocmd vimrc TermResponseAll background call s:FollowTermBackground()
+endif
+
 if !exists('g:colors_name')
   try
     colorscheme catppuccin

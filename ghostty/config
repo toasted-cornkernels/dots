@@ -30,3 +30,8 @@ confirm-close-surface = false
 title = ""
 
 unfocused-split-opacity = 1
+
+# Always start in tmux: reattach a detached session (e.g. after an accidental
+# Cmd+Q) or start a new one. tmux-ghostty comes from LambdaMachine's
+# Common/modules/tmux.nix; fall back to a plain shell if it's missing or fails.
+command = /bin/zsh -lc 'tmux-ghostty || exec zsh -l'
