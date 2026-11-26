@@ -750,8 +750,8 @@ function! s:HunkMaps() abort
   if exists('g:which_key_local_map')
     if exists('b:vimrc_hunk_maps')
       let g:which_key_local_map.v = s:hunk_keys
-    else
-      silent! unlet g:which_key_local_map.v
+    elseif has_key(g:which_key_local_map, 'v')
+      call remove(g:which_key_local_map, 'v')
     endif
   endif
 endfunction
@@ -759,6 +759,54 @@ autocmd vimrc BufEnter,FileType * call s:HunkMaps()
 
 " undotree (vundo)
 let g:undotree_SetFocusWhenToggle = 1
+
+" Magit (evil-collection) keys in the :Git status buffer, aliased onto
+" fugitive's own maps. Remote ops (push/pull/fetch) stay on the shell.
+let s:magit_aliases = [
+      \ ['nx', 'x', 'X'], ['nx', '<Tab>', '='],
+      \ ['n', 'q', 'gq'], ['n', '?', 'g?'],
+      \ ['nxo', '<C-j>', ')'], ['nxo', '<C-k>', '('],
+      \ ['nxo', 'gj', ']/'], ['nxo', 'gk', '[/'],
+      \ ['nxo', 'gn', 'gu'], ['nxo', 'gu', 'gU'],
+      \ ['nxo', 'gpu', 'gp'], ['nxo', 'gpp', 'gp'],
+      \ ['nxo', 'gfu', 'gP'], ['nxo', 'gfp', 'gP'],
+      \ ['n', 'Zz', 'czz'], ['n', 'Zw', 'czw'], ['n', 'Zi', 'czs'],
+      \ ['n', 'Za', 'cza'], ['n', 'Zp', 'czp'],
+      \ ['n', '_', 'crc'], ['n', '-', 'crn'],
+      \ ['n', 'bb', 'co<Space>'], ['n', 'm', 'cm<Space>']]
+function! s:MagitKeys() abort
+  " Snapshot every source first so aliases never chain (gn -> gu -> gU).
+  let l:maps = []
+  for [l:modes, l:new, l:old] in s:magit_aliases
+    for l:mode in split(l:modes, '\zs')
+      let l:dict = maparg(l:old, l:mode, 0, 1)
+      if !empty(l:dict)
+        call add(l:maps, [l:mode, l:new, l:dict])
+      endif
+    endfor
+  endfor
+  for l:mode in ['n', 'x', 'o']
+    silent! execute l:mode . 'unmap <buffer> gp'
+  endfor
+  for [l:mode, l:new, l:dict] in l:maps
+    " Borrow the raw lhs Vim itself computes (<C-j> has a modifyOtherKeys
+    " form and a simplified one), then swap in the copied mapping.
+    execute l:mode . 'noremap <buffer> ' . l:new . ' <Nop>'
+    let l:raw = maparg(l:new, l:mode, 0, 1)
+    if has_key(l:dict, 'lhsrawalt')
+      call remove(l:dict, 'lhsrawalt')
+    endif
+    call extend(l:dict, filter(copy(l:raw), 'v:key =~# "^lhs"'))
+    let l:dict.buffer = 1
+    call mapset(l:mode, 0, l:dict)
+  endfor
+  nnoremap <buffer><silent><nowait> gr :<C-U>edit<CR>
+  nnoremap <buffer><silent><nowait> S :<C-U>Git add -u<CR>
+  nnoremap <buffer><silent><nowait> L :<C-U>Git log --graph --oneline --decorate<CR>
+  nnoremap <buffer><nowait> <Bar> :Git<Space>
+  nnoremap <buffer><nowait> bc :Git switch -c<Space>
+endfunction
+autocmd vimrc User FugitiveIndex call s:MagitKeys()
 
 " Which-key ========================================
 " ==================================================
