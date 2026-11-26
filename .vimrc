@@ -482,6 +482,39 @@ nnoremap <leader>} :+tabmove<CR>
 nnoremap <leader>/ :cnext<CR>
 nnoremap <leader>\ :cprevious<CR>
 
+" Borrowed from VSpaceCode's menu (mirrored in NeovimConfig and init.el).
+function! s:GrepProject(text) abort
+  execute 'silent grep! -F --' shellescape(a:text, 1) shellescape(s:ProjectRoot(), 1)
+  redraw!
+  cwindow
+endfunction
+
+" A shell in the buffer's directory: a tmux pane below if inside tmux, else Terminal.app.
+function! s:ExternalTerminal() abort
+  let l:dir = expand('%:p:h')
+  let l:dir = shellescape(isdirectory(l:dir) ? l:dir : getcwd())
+  if !empty($TMUX)
+    call system('tmux split-window -v -t ' . shellescape($TMUX_PANE) . ' -c ' . l:dir)
+  else
+    call system('open -a Terminal ' . l:dir)
+  endif
+endfunction
+
+nmap <leader>cl gcc
+xmap <leader>cl gc
+nnoremap <leader>cn :cnext<CR>
+nnoremap <leader>cp :cprevious<CR>
+execute 'nnoremap <leader>sp :' . (s:live_grep ? 'Grep' : 'grep') . '<Space>'
+nnoremap <silent> <leader>sP :call <SID>GrepProject(expand('<cword>'))<CR>
+xnoremap <silent> <leader>sP :<C-u>call <SID>GrepProject(join(getregion(getpos("'<"), getpos("'>"), {'type': visualmode()}), "\n"))<CR>
+nmap <leader>* <leader>sP
+xmap <leader>* <leader>sP
+nnoremap <leader>se :%s/\<<C-r><C-w>\>//gI<Left><Left><Left>
+execute 'nnoremap <leader>rl :' . (s:live_grep ? 'Grep' : 'grep') . ' <Up>'
+nnoremap <leader>rb :ls t<CR>:buffer<Space>
+nnoremap <leader>? :filter /\c/ map<Left><Left><Left><Left><Left>
+nnoremap <silent> <leader>" :call <SID>ExternalTerminal()<CR>
+
 " windows
 nnoremap <leader>; :vsplit<CR>
 nnoremap <leader>' :split<CR>
@@ -828,6 +861,9 @@ let g:which_key_map = {
       \ ';':      'vsplit',
       \ "'":      'split',
       \ 'o':      'find-file',
+      \ '*':      'search-project-at-point',
+      \ '?':      'search-keybindings',
+      \ '"':      'external-terminal',
       \ '1': 'window-1', '2': 'window-2', '3': 'window-3',
       \ '4': 'window-4', '5': 'window-5', '6': 'window-6',
       \ '7': 'window-7', '8': 'window-8', '9': 'window-9',
@@ -917,6 +953,15 @@ let g:which_key_map.S = {
       \       'c': 'clean', 'v': 'status', 'U': 'upgrade-vim-plug'},
       \ }
 let g:which_key_map.q = {'name': '+quit', 'q': 'quit-vim', 'f': 'quit-window'}
+let g:which_key_map.c = {
+      \ 'name': '+compile/comments', 'l': 'comment-line',
+      \ 'n': 'next-error', 'p': 'previous-error',
+      \ }
+let g:which_key_map.s = {
+      \ 'name': '+search', 'p': 'ripgrep-project', 'P': 'search-project-at-point',
+      \ 'e': 'edit-symbol',
+      \ }
+let g:which_key_map.r = {'name': '+resume/recent', 'l': 'resume-grep', 'b': 'recent-buffers'}
 
 let g:which_key_local_map = {}
 
