@@ -49,7 +49,7 @@ if filereadable(s:plug_vim)
   Plug 'catppuccin/vim', { 'as': 'catppuccin', 'branch': 'main' }
   Plug 'vimpostor/vim-lumen'
   " which-key
-  Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKey!', 'WhichKeyVisual', 'WhichKeyVisual!'] }
+  Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKeyVisual'] }
   call plug#end()
 endif
 
@@ -806,15 +806,31 @@ let g:which_key_local_map = {
       \ }
 
 if s:Has('vim-which-key')
-  " Leader maps are all global and static; parse once instead of per popup.
-  let g:which_key_run_map_on_popup = 0
   autocmd vimrc User vim-which-key
         \   call which_key#register('<Space>', 'g:which_key_map')
         \ | call which_key#register(',', 'g:which_key_local_map')
-  nnoremap <silent> <leader> :<C-u>WhichKey '<Space>'<CR>
-  xnoremap <silent> <leader> :<C-u>WhichKeyVisual '<Space>'<CR>
-  nnoremap <silent> <localleader> :<C-u>WhichKey ','<CR>
-  xnoremap <silent> <localleader> :<C-u>WhichKeyVisual ','<CR>
+
+  " which-key dispatches the rest of the sequence itself, so the trigger must
+  " fire immediately instead of after 'timeoutlen'. Vim only honors <nowait>
+  " on buffer-local maps, and only over buffer-local maps defined before it
+  " (e.g. vim-sexp's ,w), hence the per-buffer triggers installed after
+  " plugins' FileType autocmds. SPC maps are global and static, so their parse
+  " is cached; , maps are partly buffer-local, so they are re-parsed.
+  function! s:WhichKeyTriggers() abort
+    for [l:key, l:prefix, l:reparse] in [['<Space>', '<Space>', 0], [',', ',', 1]]
+      for [l:mode, l:cmd] in [['n', 'WhichKey'], ['x', 'WhichKeyVisual']]
+        if get(maparg(l:key, l:mode, 0, 1), 'buffer')
+          execute l:mode . 'unmap <buffer>' l:key
+        endif
+        execute l:mode . 'noremap <buffer><nowait><silent>' l:key
+              \ ':<C-u>let g:which_key_run_map_on_popup =' l:reparse
+              \ '<Bar>' l:cmd "'" . l:prefix . "'<CR>"
+      endfor
+    endfor
+  endfunction
+  autocmd vimrc VimEnter * ++once
+        \   autocmd vimrc BufEnter,FileType * call s:WhichKeyTriggers()
+  autocmd vimrc VimEnter * ++once call s:WhichKeyTriggers()
 endif
 
 " Visuals ==========================================
