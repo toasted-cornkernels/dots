@@ -29,9 +29,23 @@ if filereadable(s:plug_vim)
   " git: magit, git-link
   Plug 'tpope/vim-fugitive'
   Plug 'tpope/vim-rhubarb'
+  " diff-hl
+  Plug 'mhinz/vim-signify'
   " evil-surround
   Plug 'tpope/vim-surround'
   Plug 'tpope/vim-repeat'
+  " evil-unimpaired
+  Plug 'tpope/vim-unimpaired'
+  " dtrt-indent
+  Plug 'tpope/vim-sleuth'
+  " crux file commands, sudo-edit
+  Plug 'tpope/vim-eunuch'
+  " evil-textobj extras
+  Plug 'wellle/targets.vim'
+  " align
+  Plug 'junegunn/vim-easy-align', { 'on': ['<Plug>(EasyAlign)', 'EasyAlign'] }
+  " vundo
+  Plug 'mbbill/undotree', { 'on': 'UndotreeToggle' }
   " evil-lisp-state
   Plug 'guns/vim-sexp'
   Plug 'tpope/vim-sexp-mappings-for-regular-people'
@@ -62,6 +76,11 @@ silent! packadd! matchit
 silent! packadd! comment     " gc operator (evil-commentary)
 silent! packadd! nohlsearch  " clear search highlight on idle/insert
 silent! packadd! cfilter     " :Cfilter / :Lfilter
+silent! packadd! hlyank      " pulse the yanked region
+" editorconfig: sleuth also reads indent keys from .editorconfig; this adds
+" the rest (trim_trailing_whitespace, charset, ...).
+let g:EditorConfig_exclude_patterns = ['fugitive://.*', 'scp://.*']
+silent! packadd! editorconfig
 
 " OSC 52 clipboard over SSH (clipetty); local sessions keep the native clipboard.
 if has('clipboard_provider') && !has('gui_running')
@@ -390,18 +409,6 @@ endfunction
 " Helpers ==========================================
 " ==================================================
 
-function! s:RenameFile() abort
-  let l:old = expand('%:p')
-  let l:new = input('Rename to: ', l:old, 'file')
-  if empty(l:new) || l:new ==# l:old
-    return
-  endif
-  execute 'saveas' fnameescape(l:new)
-  if delete(l:old) == 0
-    silent! execute 'bwipeout' bufnr(l:old)
-  endif
-endfunction
-
 function! s:DeleteFile() abort
   let l:file = expand('%:p')
   if empty(l:file) || confirm('Delete ' . l:file . '?', "&Yes\n&No", 2) != 1
@@ -515,7 +522,8 @@ nnoremap <leader>fs :update<CR>
 nnoremap <leader>fS :wall<CR>
 nnoremap <leader>fa :saveas<Space>
 nnoremap <leader>fc :write <C-r>=fnameescape(expand('%:p:~:h')) . '/'<CR>
-nnoremap <leader>fR :call <SID>RenameFile()<CR>
+nnoremap <leader>fR :Move <C-r>=fnameescape(expand('%:p:~'))<CR>
+nnoremap <leader>fE :SudoEdit<CR>
 nnoremap <leader>fDD :call <SID>DeleteFile()<CR>
 nnoremap <leader>fi :read<Space>
 nnoremap <leader>fr :browse oldfiles<CR>
@@ -628,7 +636,9 @@ if exists('+fullscreen')
 endif
 
 " text
-nnoremap <leader>xu :undolist<CR>
+nnoremap <leader>xu :UndotreeToggle<CR>
+nmap <leader>xa <Plug>(EasyAlign)
+xmap <leader>xa <Plug>(EasyAlign)
 nnoremap <leader>xc g<C-g>
 nnoremap <leader>xix :digraphs<CR>
 
@@ -713,6 +723,47 @@ for s:plug in ['Sneak_s', 'Sneak_S', 'Sneak_;', 'Sneak_,']
   execute 'map <Plug>(vimrc-unused-' . s:plug . ') <Plug>' . s:plug
 endfor
 
+" signify (diff-hl): git only; ]c/[c jump hunks and fall back to stock in diff mode.
+let g:signify_skip = {'vcs': {'allow': ['git']}}
+let g:signify_sign_change = '~'
+
+" diff-hl's local-leader keys, only in git-tracked files (diff-hl-mode).
+let s:hunk_keys = {'name': '+diff-hl', 'j': 'next-hunk', 'k': 'previous-hunk',
+      \ 'n': 'next-hunk', 'p': 'previous-hunk',
+      \ 'J': 'show-hunk-next', 'K': 'show-hunk-previous',
+      \ 'N': 'show-hunk-next', 'P': 'show-hunk-previous',
+      \ '.': 'show-hunk', 'r': 'revert-hunk', 'm': 'mark-hunk'}
+function! s:HunkMaps() abort
+  if s:Has('vim-signify') && empty(&buftype) && !exists('b:vimrc_hunk_maps')
+        \ && exists('*FugitiveGitDir') && !empty(FugitiveGitDir())
+    let b:vimrc_hunk_maps = 1
+    for [l:keys, l:rhs] in [
+          \ [['j', 'n'], '<Plug>(signify-next-hunk)'],
+          \ [['k', 'p'], '<Plug>(signify-prev-hunk)'],
+          \ [['J', 'N'], '<Plug>(signify-next-hunk):SignifyHunkDiff<CR>'],
+          \ [['K', 'P'], '<Plug>(signify-prev-hunk):SignifyHunkDiff<CR>'],
+          \ [['.'], ':SignifyHunkDiff<CR>'],
+          \ [['r'], ':SignifyHunkUndo<CR>'],
+          \ [['m'], 'v<Plug>(signify-motion-inner-visual)']]
+      for l:key in l:keys
+        execute 'nmap <buffer><silent> <localleader>v' . l:key l:rhs
+      endfor
+    endfor
+  endif
+  " The , which-key map is global; label the group only where it exists.
+  if exists('g:which_key_local_map')
+    if exists('b:vimrc_hunk_maps')
+      let g:which_key_local_map.v = s:hunk_keys
+    else
+      silent! unlet g:which_key_local_map.v
+    endif
+  endif
+endfunction
+autocmd vimrc BufEnter,FileType * call s:HunkMaps()
+
+" undotree (vundo)
+let g:undotree_SetFocusWhenToggle = 1
+
 " Which-key ========================================
 " ==================================================
 
@@ -749,7 +800,7 @@ let g:which_key_map.f = {
       \ 'name': '+file',
       \ 'f': 'find-file', 'F': 'find-file-other-window', 'T': 'find-file-other-tab',
       \ 's': 'save', 'S': 'save-all', 'a': 'write-file', 'c': 'copy-file',
-      \ 'R': 'rename-file', 'i': 'insert-file', 'r': 'recent-files',
+      \ 'R': 'rename-file', 'E': 'sudo-edit', 'i': 'insert-file', 'r': 'recent-files',
       \ 'j': 'dired-jump', 'p': 'project-buffer',
       \ 'D': {'name': '+delete', 'D': 'delete-this-file'},
       \ 'e': {'name': '+vim', 'd': 'open-vimrc', 'D': 'open-gvimrc', 'R': 'source-vimrc'},
@@ -801,7 +852,7 @@ let g:which_key_map.T = {
       \ 'o': {'name': '+olivetti', 'o': 'olivetti'},
       \ }
 let g:which_key_map.x = {
-      \ 'name': '+text', 'u': 'undo-list', 'c': 'count-words',
+      \ 'name': '+text', 'u': 'vundo', 'a': 'align', 'c': 'count-words',
       \ 'i': {'name': '+insert', 'x': 'digraphs'},
       \ }
 let g:which_key_map.y = {'name': '+yank', 'y': 'registers'}
