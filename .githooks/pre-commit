@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# This repository is public. Refuse commits that add organizational data:
+#   1. any string from the untracked VS Code private settings, in any file;
+#   2. proxy / SSH / schema / enterprise settings in vscode/*.json;
+#   3. URLs, hostnames or IP addresses in vscode/*.json.
+# Findings are reported by file, line and rule only, never by value.
+# Bypass a false positive with `git commit --no-verify`.
+set -eu
+
+private="${VSCODE_PRIVATE_SETTINGS:-$HOME/.config/vscode/settings.private.jsonc}"
+base="vscode/settings.json"
+
+org_keys='"(http\.proxy[A-Za-z]*|http\.noProxy|remote\.SSH\.[A-Za-z.]+|yaml\.schemas|github-enterprise\.[A-Za-z]+)"[[:space:]]*:'
+url='[A-Za-z][A-Za-z0-9+.-]*://'
+host='[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.(com|net|org|io|corp|internal|intranet|local|lan|dev|cloud|biz|co)([^A-Za-z0-9-]|$)'
+ipv4='(^|[^0-9.])[0-9]{1,3}(\.[0-9]{1,3}){3}([^0-9.]|$)'
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+
+# Strings from the private file worth matching: at least 6 characters and not
+# already in the committed public base (shared values like "remote" are fine).
+# Compare against HEAD, not the index, or a staged leak would excuse itself.
+: > "$tmp/secrets"
+if [ -f "$private" ]; then
+  grep -oE '"[^"]{6,}"' "$private" | sort -u > "$tmp/private"
+  if git cat-file -e "HEAD:$base" 2>/dev/null; then
+    git show "HEAD:$base" | grep -oE '"[^"]{6,}"' | sort -u > "$tmp/public"
+  else
+    : > "$tmp/public"
+  fi
+  comm -23 "$tmp/private" "$tmp/public" | sed 's/^"//; s/"$//' > "$tmp/secrets"
+fi
+
+# Added lines as "file<TAB>line<TAB>text".
+git diff --cached --no-color --no-ext-diff -U0 --diff-filter=ACMR |
+  awk '
+    /^\+\+\+ / { f = substr($0, 7); next }
+    /^@@ /     { split($3, a, ","); n = substr(a[1], 2) + 0; next }
+    /^\+/      { printf "%s\t%d\t%s\n", f, n, substr($0, 2); n++ }
+  ' > "$tmp/added"
+
+# Each rule runs once over all added lines. Matching is done on the text
+# column only; awk then reports the file and line of each hit.
+cut -f3- "$tmp/added" > "$tmp/all"
+# VS Code rules ignore other files and whole-line // comments.
+awk -F '\t' '{ t = $0; sub(/^[^\t]*\t[^\t]*\t/, "", t)
+               if ($1 !~ /^vscode\/.*\.json$/ || t ~ /^[ \t]*\/\//) t = ""
+               print t }' "$tmp/added" > "$tmp/vscode"
+
+: > "$tmp/hits"
+rule() { # rule <reason> <grep args...>
+  local reason=$1; shift
+  grep -n "$@" | awk -F: -v r="$reason" '{ print $1 "	" r }' >> "$tmp/hits" || true
+}
+[ -s "$tmp/secrets" ] && rule "value from $(basename "$private")" -Ff "$tmp/secrets" "$tmp/all"
+rule "organizational setting" -E "$org_keys" "$tmp/vscode"
+rule "URL"                    -E "$url"      "$tmp/vscode"
+rule "hostname"               -E "$host"     "$tmp/vscode"
+rule "IP address"             -E "$ipv4"     "$tmp/vscode"
+
+if [ -s "$tmp/hits" ]; then
+  awk -F '\t' 'NR == FNR { f[FNR] = $1; l[FNR] = $2; next }
+               { printf "  %s:%s  %s\n", f[$1], l[$1], $2 }' \
+    "$tmp/added" "$tmp/hits" | sort -t: -k1,1 -k2n >&2
+  cat >&2 <<EOF
+pre-commit: this public repo would gain organizational data (lines above).
+Move work settings to $private.
+If a finding is a false positive, commit with --no-verify.
+EOF
+  exit 1
+fi
