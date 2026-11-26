@@ -806,6 +806,8 @@ let g:which_key_local_map = {
       \ }
 
 if s:Has('vim-which-key')
+  " Leader maps are all global and static; parse once instead of per popup.
+  let g:which_key_run_map_on_popup = 0
   autocmd vimrc User vim-which-key
         \   call which_key#register('<Space>', 'g:which_key_map')
         \ | call which_key#register(',', 'g:which_key_local_map')
