@@ -25,16 +25,15 @@ if has('gui_macvim')
   nnoremap <D-]> gt
   nnoremap <D-.> <Cmd>tabnew<CR>
 
-  " auto-dark, using MacVim's built-in appearance tracking instead of vim-lumen.
+  " auto-dark via MacVim's built-in appearance tracking; catppuccin follows
+  " 'background' (latte/mocha).
   if exists('##OSAppearanceChanged')
     function! s:FollowAppearance() abort
-      let l:dark = v:os_appearance % 2
-      let &background = l:dark ? 'dark' : 'light'
+      let &background = v:os_appearance % 2 ? 'dark' : 'light'
       try
-        execute 'colorscheme' l:dark ? get(g:, 'lumen_dark_colorscheme', 'catppuccin_mocha')
-              \ : get(g:, 'lumen_light_colorscheme', 'catppuccin_latte')
+        colorscheme catppuccin
       catch /^Vim\%((\a\+)\)\=:E185/
-        silent! colorscheme catppuccin
+        silent! colorscheme lunaperche
       endtry
     endfunction
     call s:FollowAppearance()

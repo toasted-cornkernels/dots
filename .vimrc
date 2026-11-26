@@ -41,14 +41,10 @@ if filereadable(s:plug_vim)
   Plug 'luochen1990/rainbow'
   " avy
   Plug 'justinmk/vim-sneak'
-  " sending code to REPLs
-  Plug 'jpalardy/vim-slime'
   " hy-mode
   Plug 'hylang/vim-hy'
-  " theme + auto-dark
+  " theme (follows 'background'; see Visuals)
   Plug 'catppuccin/vim', { 'as': 'catppuccin', 'branch': 'main' }
-  " MacVim's GUI tracks the OS appearance natively; see .gvimrc
-  Plug 'vimpostor/vim-lumen', has('gui_macvim') && has('gui_running') ? { 'on': [] } : {}
   " which-key
   Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKeyVisual'] }
   call plug#end()
@@ -112,17 +108,32 @@ set linebreak                      " global-visual-line-mode
 if exists('+breakindent')
   set breakindent
 endif
-set scrolloff=1
+set scrolloff=4
 set sidescrolloff=5
+silent! set smoothscroll           " scroll wrapped lines by screen line
 set display+=lastline
 set splitright
 set splitbelow
 set guioptions=
-set noswapfile
+" Crash recovery and persistent undo (auto-save, undo-fu-session), kept out of
+" project directories. A trailing // encodes the full path in the file name.
+for s:dir in ['swap', 'backup', 'undo']
+  if !isdirectory(s:data_dir . '/' . s:dir)
+    silent! call mkdir(s:data_dir . '/' . s:dir, 'p', 0700)
+  endif
+endfor
+let &directory = s:data_dir . '/swap//'
+let &backupdir = s:data_dir . '/backup//'
+let &undodir = s:data_dir . '/undo//'
+set swapfile
 set nobackup
-set nowritebackup
-set noundofile
+set writebackup                    " temporary backup while writing only
+set undofile
 set undolevels=1000
+set nomodeline                     " enable-local-variables :safe; untrusted files
+set synmaxcol=300                  " so-long: don't highlight minified lines
+set foldmethod=indent
+set foldlevelstart=99              " open files unfolded; za/zM/zR to fold
 set history=1000
 set tabpagemax=50
 set novisualbell
@@ -139,8 +150,13 @@ set wildmenu
 set wildcharm=<C-z>
 silent! set nolangremap
 silent! set noimd
-if has('balloon_eval')
-  set ballooneval
+" ediff: side by side, aligned changed lines, word-level inline highlights.
+" One item per :set so older Vims keep whatever they support.
+set diffopt+=vertical
+silent! set diffopt+=algorithm:histogram
+silent! set diffopt+=linematch:60
+if &diffopt =~# 'inline:'
+  silent! set diffopt-=inline:char diffopt+=inline:word
 endif
 if has('path_extra')
   setglobal tags-=./tags tags-=./tags; tags^=./tags;
@@ -166,6 +182,19 @@ autocmd vimrc BufReadPost *
       \ | if s:line >= 1 && s:line <= line('$') && &filetype !~# 'commit'
       \      && index(['xxd', 'gitrebase'], &filetype) == -1
       \ |   execute "normal! g`\""
+      \ | endif
+
+" so-long: plain, cheap buffers for huge files. filetypedetect's autocmds are
+" defined earlier (filetype on), so syntax can be switched off after them.
+let s:large_file = 2 * 1024 * 1024
+autocmd vimrc BufReadPre *
+      \ if getfsize(expand('<afile>')) > s:large_file || getfsize(expand('<afile>')) == -2
+      \ |   let b:vimrc_large_file = 1
+      \ |   setlocal noswapfile noundofile undolevels=-1 bufhidden=unload
+      \ | endif
+autocmd vimrc BufReadPost,BufWinEnter *
+      \ if get(b:, 'vimrc_large_file')
+      \ |   setlocal syntax=OFF foldmethod=manual nowrap
       \ | endif
 
 " global-auto-revert-mode
@@ -369,7 +398,16 @@ function! s:Scratch() abort
   file *scratch*
 endfunction
 
-let s:session_file = s:data_dir . '/session.vim'
+" projectile-regenerate-tags; needs universal-ctags (BSD ctags lacks -R).
+function! s:RegenerateTags() abort
+  let l:root = s:ProjectRoot()
+  let l:out = system('cd ' . shellescape(l:root) . ' && ctags -R -f tags .')
+  if v:shell_error
+    echohl ErrorMsg | echomsg 'ctags failed: ' . substitute(trim(l:out), '\n', ' ', 'g') | echohl None
+  else
+    echomsg 'Wrote ' . fnamemodify(l:root, ':~') . '/tags'
+  endif
+endfunction
 
 " Keymaps ==========================================
 " ==================================================
@@ -489,20 +527,15 @@ nnoremap <leader>pg :Git<CR>
 nnoremap <leader>pk :%bdelete<CR>
 nnoremap <leader>ps :wall<CR>
 nnoremap <leader>p! :!cd <C-r>=shellescape(<SID>ProjectRoot(), 1)<CR> &&<Space>
-nnoremap <leader>pv :call term_start(&shell, {'cwd': <SID>ProjectRoot()})<CR>
+nnoremap <leader>pG :call <SID>RegenerateTags()<CR>
 
-" git (magit, git-link)
+" git (magit, git-link): read and stage only; push/pull/commit from a shell.
 nnoremap <leader>gs :Git<CR>
 nnoremap <leader>gm :Git<Space>
 nnoremap <leader>gb :Git blame<CR>
-nnoremap <leader>gc :Git commit<CR>
-nnoremap <leader>gC :Git clone<Space>
 nnoremap <leader>ga :Git add -- %<CR>
 nnoremap <leader>gu :Git reset -q -- %<CR>
-nnoremap <leader>gp :Git push<CR>
-nnoremap <leader>gP :Git pull<CR>
 nnoremap <leader>gd :Gdiffsplit<CR>
-nnoremap <leader>gi :Git init<CR>
 nnoremap <leader>gff :Gedit<Space>
 nnoremap <leader>gfl :0Gclog<CR>
 nnoremap <leader>gfd :Gdiffsplit<CR>
@@ -593,21 +626,6 @@ nnoremap <leader>lmm :setfiletype markdown<CR>
 
 " utilities
 nnoremap <leader>ai :echo strftime('%c')<CR>
-nnoremap <leader>atst :terminal<CR>
-nnoremap <leader>atsa :!
-nnoremap <leader>atrb :terminal bb<CR>
-nnoremap <leader>atrn :terminal nbb<CR>
-nnoremap <leader>atro :terminal ocaml<CR>
-nnoremap <leader>atru :terminal utop<CR>
-nnoremap <leader>atrl :terminal lua<CR>
-nnoremap <leader>atrH :terminal hy<CR>
-
-" desktop -> sessions
-execute 'nnoremap <leader>Ds :mksession! ' . fnameescape(s:session_file) . '<CR>'
-execute 'nnoremap <leader>Dr :source ' . fnameescape(s:session_file) . '<CR>'
-execute 'nnoremap <leader>DR :source ' . fnameescape(s:session_file) . '<CR>'
-execute 'nnoremap <leader>Dd :call delete(' . string(s:session_file) . ')<CR>'
-nnoremap <leader>Dc :%bdelete<CR>
 
 " straight -> vim-plug
 nnoremap <leader>Spu :PlugInstall<CR>
@@ -620,14 +638,6 @@ nnoremap <leader>SpU :PlugUpgrade<CR>
 " quit
 nnoremap <leader>qq :qa!<CR>
 nnoremap <leader>qf :quit<CR>
-
-" , --------------------------------------------------
-" eval -> vim-slime
-nnoremap <localleader>eb :%SlimeSend<CR>
-nmap     <localleader>ef <Plug>SlimeParagraphSend
-nmap     <localleader>ee <Plug>SlimeMotionSendab
-nmap     <localleader>el <Plug>SlimeLineSend
-xmap     <localleader>er <Plug>SlimeRegionSend
 
 " Aliases for commonly used commands+lazy shift finger:
 command! -bar -nargs=* -complete=file -range=% -bang W         <line1>,<line2>write<bang> <args>
@@ -672,16 +682,6 @@ let g:sneak#use_ic_scs = 1
 for s:plug in ['Sneak_s', 'Sneak_S', 'Sneak_;', 'Sneak_,']
   execute 'map <Plug>(vimrc-unused-' . s:plug . ') <Plug>' . s:plug
 endfor
-
-" vim-slime
-let g:slime_python_ipython = 1
-if exists('$TMUX') && !has('gui_running')
-  let g:slime_target = 'tmux'
-  let g:slime_default_config = {'socket_name': 'default', 'target_pane': '0'}
-  let g:slime_dont_ask_default = 1
-else
-  let g:slime_target = 'vimterminal'
-endif
 
 " Which-key ========================================
 " ==================================================
@@ -735,13 +735,12 @@ let g:which_key_map.p = {
       \ 'name': '+project',
       \ 'f': 'find-file', '/': 'ripgrep', 'b': 'switch-buffer', 'c': 'compile',
       \ 'd': 'dired', 'g': 'vc', 'k': 'kill-buffers', 's': 'save-buffers',
-      \ '!': 'shell-command-in-root', 'v': 'terminal',
+      \ '!': 'shell-command-in-root', 'G': 'regenerate-tags',
       \ }
 let g:which_key_map.g = {
       \ 'name': '+git',
-      \ 's': 'status', 'm': 'dispatch', 'b': 'blame', 'c': 'commit', 'C': 'clone',
-      \ 'a': 'stage-file', 'u': 'unstage-file', 'p': 'push', 'P': 'pull',
-      \ 'd': 'diff', 'i': 'init',
+      \ 's': 'status', 'm': 'dispatch', 'b': 'blame',
+      \ 'a': 'stage-file', 'u': 'unstage-file', 'd': 'diff',
       \ 'f': {'name': '+file', 'f': 'find-file-at-rev', 'l': 'log', 'd': 'diff'},
       \ 'l': {'name': '+links', 'l': 'copy-url', 'L': 'open-url'},
       \ }
@@ -785,16 +784,7 @@ let g:which_key_map.l = {
       \ 'name': '+lang-tools',
       \ 'm': {'name': '+major-modes', 'c': 'c++', 'C': 'c', 'r': 'rust', 'm': 'markdown'},
       \ }
-let g:which_key_map.a = {
-      \ 'name': '+utilities', 'i': 'current-time',
-      \ 't': {'name': '+terminal',
-      \       's': {'name': '+shells', 't': 'terminal', 'a': 'shell-command'},
-      \       'r': {'name': '+repls', 'b': 'bb', 'n': 'nbb', 'o': 'ocaml', 'u': 'utop',
-      \             'l': 'lua', 'H': 'hy'}},
-      \ }
-let g:which_key_map.D = {
-      \ 'name': '+desktop', 's': 'save', 'r': 'read', 'R': 'revert', 'd': 'remove', 'c': 'clear',
-      \ }
+let g:which_key_map.a = {'name': '+utilities', 'i': 'current-time'}
 let g:which_key_map.S = {
       \ 'name': '+plug',
       \ 'p': {'name': '+package', 'u': 'install', 'p': 'update', 'P': 'update-all',
@@ -802,9 +792,7 @@ let g:which_key_map.S = {
       \ }
 let g:which_key_map.q = {'name': '+quit', 'q': 'quit-vim', 'f': 'quit-window'}
 
-let g:which_key_local_map = {
-      \ 'e': {'name': '+eval', 'b': 'buffer', 'f': 'defun', 'e': 'sexp', 'l': 'line', 'r': 'region'},
-      \ }
+let g:which_key_local_map = {}
 
 if s:Has('vim-which-key')
   autocmd vimrc User vim-which-key
@@ -816,12 +804,16 @@ if s:Has('vim-which-key')
   " on buffer-local maps, and only over buffer-local maps defined before it
   " (e.g. vim-sexp's ,w), hence the per-buffer triggers installed after
   " plugins' FileType autocmds. SPC maps are global and static, so their parse
-  " is cached; , maps are partly buffer-local, so they are re-parsed.
+  " is cached; , maps are buffer-local (vim-sexp), so they are re-parsed, and
+  " buffers without any keep stock , (repeat f/t backward).
   function! s:WhichKeyTriggers() abort
     for [l:key, l:prefix, l:reparse] in [['<Space>', '<Space>', 0], [',', ',', 1]]
       for [l:mode, l:cmd] in [['n', 'WhichKey'], ['x', 'WhichKeyVisual']]
         if get(maparg(l:key, l:mode, 0, 1), 'buffer')
           execute l:mode . 'unmap <buffer>' l:key
+        endif
+        if l:reparse && empty(mapcheck(l:key, l:mode))
+          continue
         endif
         execute l:mode . 'noremap <buffer><nowait><silent>' l:key
               \ ':<C-u>let g:which_key_run_map_on_popup =' l:reparse
@@ -846,9 +838,9 @@ autocmd vimrc ColorScheme *
       \ | highlight NonText ctermbg=NONE
       \ | highlight SignColumn guibg=NONE
 
-" auto-dark: vim-lumen follows the OS appearance (MacVim GUI: .gvimrc).
-let g:lumen_light_colorscheme = 'catppuccin_latte'
-let g:lumen_dark_colorscheme = 'catppuccin_mocha'
+" auto-dark without a watcher process: Vim asks the terminal for its background
+" color (t_RB) and sets 'background', which reloads catppuccin as latte/mocha.
+" Live switching is MacVim-only (.gvimrc).
 if !exists('g:colors_name')
   try
     colorscheme catppuccin
