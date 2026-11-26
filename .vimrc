@@ -45,6 +45,8 @@ if filereadable(s:plug_vim)
   Plug 'hylang/vim-hy'
   " theme (follows 'background'; see Visuals)
   Plug 'catppuccin/vim', { 'as': 'catppuccin', 'branch': 'main' }
+  " writeroom-mode, olivetti
+  Plug 'junegunn/goyo.vim', { 'on': 'Goyo' }
   " which-key
   Plug 'liuchengxu/vim-which-key', { 'on': ['WhichKey', 'WhichKeyVisual'] }
   call plug#end()
@@ -597,6 +599,8 @@ nnoremap <leader>TL :set number!<CR>
 nnoremap <leader>Tt :colorscheme <C-z>
 nnoremap <leader>Tm :let &laststatus = (&laststatus ? 0 : 2)<CR>
 nnoremap <leader>Tp :let &l:signcolumn = (&l:signcolumn ==# 'yes' ? 'no' : 'yes')<CR>
+nnoremap <leader>Tw :Goyo<CR>
+nnoremap <leader>Too :Goyo<CR>
 if exists('+fullscreen')
   nnoremap <leader>Tf :set invfullscreen<CR>
 endif
@@ -771,7 +775,8 @@ let g:which_key_map.t = {
 let g:which_key_map.T = {
       \ 'name': '+toggle',
       \ 'l': 'line-numbers', 'L': 'global-line-numbers', 't': 'theme',
-      \ 'm': 'mode-line', 'f': 'fullscreen', 'p': 'padding',
+      \ 'm': 'mode-line', 'f': 'fullscreen', 'p': 'padding', 'w': 'writeroom',
+      \ 'o': {'name': '+olivetti', 'o': 'olivetti'},
       \ }
 let g:which_key_map.x = {
       \ 'name': '+text', 'u': 'undo-list', 'c': 'count-words',
