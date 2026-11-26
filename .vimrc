@@ -205,6 +205,28 @@ autocmd vimrc BufReadPost,BufWinEnter *
 " global-auto-revert-mode
 autocmd vimrc FocusGained,BufEnter,CursorHold * if getcmdwintype() ==# '' | silent! checktime | endif
 
+" vc-follow-symlinks: visit a symlinked file by its real path, so fugitive
+" (which only looks above the buffer's own path) and 'autochdir' see the
+" repository it lives in, e.g. ~/.vimrc -> .../dots/.vimrc.
+function! s:FollowSymlink() abort
+  let l:path = expand('%:p')
+  if !empty(&buftype) || empty(l:path) || str2nr(expand('<abuf>')) != bufnr('%')
+    return
+  endif
+  let l:real = resolve(l:path)
+  if l:real ==# l:path || !filereadable(l:real)
+    return
+  endif
+  " Vim matches buffers by inode, so rename in place rather than :edit the
+  " target; :edit then clears the 'not edited' flag :file sets (E13 on :w).
+  execute 'keepalt file' fnameescape(l:real)
+  keepalt keepjumps edit
+endfunction
+autocmd vimrc BufReadPost * ++nested call s:FollowSymlink()
+
+" default-directory: cwd follows the current file.
+set autochdir
+
 " Completion =======================================
 " ==================================================
 
